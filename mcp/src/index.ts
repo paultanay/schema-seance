@@ -4,18 +4,20 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import { execSync } from 'child_process'
-import { writeFileSync, unlinkSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { writeFileSync, unlinkSync, mkdtempSync, rmdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
 const ENGINE = process.env['SCHEMASEANCE_ENGINE'] ?? './engine/cmd/cli/schemaseance'
 
 function runCLI(cmd: 'analyze' | 'rewrite' | 'gate', sql: string): string {
-  const tmp = join(tmpdir(), `schemaseance-${Date.now()}.sql`)
+  const dir = mkdtempSync(join(tmpdir(), 'sch-'))
+  const tmp = join(dir, 'input.sql')
   try {
-    writeFileSync(tmp, sql, 'utf8')
-    return execSync(`${ENGINE} ${cmd} ${tmp}`, { encoding: 'utf8' })
+    writeFileSync(tmp, sql, { encoding: 'utf8', mode: 0o600 })
+    // Array form: no shell, so ENGINE path and tmp path cannot be injected
+    return execFileSync(ENGINE, [cmd, tmp], { encoding: 'utf8' })
   } catch (e) {
     if (e instanceof Error && 'stdout' in e) {
       return (e as NodeJS.ErrnoException & { stdout: string }).stdout ?? String(e)
@@ -23,6 +25,7 @@ function runCLI(cmd: 'analyze' | 'rewrite' | 'gate', sql: string): string {
     return String(e)
   } finally {
     try { unlinkSync(tmp) } catch { /* ignore */ }
+    try { rmdirSync(dir) } catch { /* ignore */ }
   }
 }
 
@@ -75,6 +78,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   if (!sql || typeof sql !== 'string') {
     return { content: [{ type: 'text', text: 'Error: sql argument required.' }], isError: true }
+  }
+
+  // shortcut: cap at 1 MiB to bound lexer memory; raise when audit inputs grow
+  if (sql.length > 1_048_576) {
+    return { content: [{ type: 'text', text: 'Error: sql exceeds 1 MiB limit.' }], isError: true }
   }
 
   switch (name) {

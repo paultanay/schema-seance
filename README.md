@@ -96,9 +96,8 @@ This repository demonstrates spec-driven development with Kiro:
 - **EARS specs:** 4 spec directories (ast-analyzer, dual-pglite-runner, expand-contract-rewriter, studio-ui) each with requirements.md, design.md, tasks.md
 - **Hooks:** PostFileSave hooks for Go and web, Stop hook for migration safety gate
 - **Custom agent:** dba-adversary (read-only adversarial DBA with capability-based permissions)
-- **MCP server:** stdio server exposing analyze_migration, propose_expand_contract, gate_migration
+- **MCP server:** stdio server exposing analyze_migration, run_shadow_proof, propose_expand_contract
 - **Kiro Power:** installable bundle with MCP config and steering doc
-- **Crew App:** companion scaffold in `schemaseance-crew-app/` for scheduled migration scanning
 
 ## License
 

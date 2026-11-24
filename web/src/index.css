@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --surface-0: #ffffff;
+  --surface-1: #f8fafc;
+  --slate: #1e293b;
+  --slate-border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
+  --crimson: #b91c1c;
+  --forest: #15803d;
+  --amber: #b45309;
+  --accent: #1d4ed8;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-ui: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+[data-theme="dark"] {
+  --surface-0: #0f1115;
+  --surface-1: #161a22;
+  --slate: #334155;
+  --slate-border: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-muted: #94a3b8;
+  --crimson: #ef4444;
+  --forest: #22c55e;
+  --amber: #f59e0b;
+  --accent: #60a5fa;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-ui);
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+code, pre, .mono {
+  font-family: var(--font-mono);
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--font-ui);
+}

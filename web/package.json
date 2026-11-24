@@ -1,0 +1,30 @@
+{
+  "name": "schemaseance-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@fast-check/vitest": "^0.1.6",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "fast-check": "^3.22.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.6",
+    "vitest": "^3.0.0"
+  }
+}

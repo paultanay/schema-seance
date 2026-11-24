@@ -1,13 +1,16 @@
 package rewriter
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/schemaseance/schemaseance/engine/internal/locks"
 	"github.com/schemaseance/schemaseance/engine/internal/sqlast"
 )
+
+func quoteIdent(s string) string {
+	return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
+}
 
 func Rewrite(sql string) (*RewritePlan, error) {
 	stmts, err := sqlast.Parse(sql)
@@ -62,17 +65,17 @@ func applyLock001(plan *RewritePlan, f locks.Finding, stmts []sqlast.Statement) 
 		}
 		shadowCol := a.Column + "_new"
 		plan.Phase1 = append(plan.Phase1,
-			fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s;", stmt.Table, shadowCol, a.NewType),
+			fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s;", quoteIdent(stmt.Table), quoteIdent(shadowCol), a.NewType),
 		)
 		plan.Phase2 = append(plan.Phase2,
-			fmt.Sprintf("UPDATE %s SET %s = %s::%s WHERE %s IS NOT NULL;", stmt.Table, shadowCol, a.Column, a.NewType, a.Column),
-			fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT chk_%s_type CHECK (%s IS NOT NULL OR %s IS NULL) NOT VALID;", stmt.Table, shadowCol, shadowCol, a.Column),
-			fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT chk_%s_type;", stmt.Table, shadowCol),
+			fmt.Sprintf("UPDATE %s SET %s = %s::%s WHERE %s IS NOT NULL;", quoteIdent(stmt.Table), quoteIdent(shadowCol), quoteIdent(a.Column), a.NewType, quoteIdent(a.Column)),
+			fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT chk_%s_type CHECK (%s IS NOT NULL OR %s IS NULL) NOT VALID;", quoteIdent(stmt.Table), shadowCol, quoteIdent(shadowCol), quoteIdent(a.Column)),
+			fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT chk_%s_type;", quoteIdent(stmt.Table), shadowCol),
 		)
 		plan.Phase3 = append(plan.Phase3,
 			fmt.Sprintf("SET lock_timeout = '2s';"),
-			fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s;", stmt.Table, a.Column),
-			fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", stmt.Table, shadowCol, a.Column),
+			fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s;", quoteIdent(stmt.Table), quoteIdent(a.Column)),
+			fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", quoteIdent(stmt.Table), quoteIdent(shadowCol), quoteIdent(a.Column)),
 		)
 	}
 }
@@ -90,8 +93,12 @@ func applyLock002(plan *RewritePlan, f locks.Finding, stmts []sqlast.Statement) 
 	if name == "" {
 		name = fmt.Sprintf("idx_%s_new", strings.ToLower(stmt.Table))
 	}
+	colClause := ""
+	if stmt.Columns != "" {
+		colClause = fmt.Sprintf(" (%s)", stmt.Columns)
+	}
 	plan.Phase1 = append(plan.Phase1,
-		fmt.Sprintf("CREATE %sINDEX CONCURRENTLY %s ON %s;", uniqueKw, name, stmt.Table),
+		fmt.Sprintf("CREATE %sINDEX CONCURRENTLY %s ON %s%s;", uniqueKw, quoteIdent(name), quoteIdent(stmt.Table), colClause),
 	)
 }
 
@@ -101,7 +108,7 @@ func applyLock003(plan *RewritePlan, f locks.Finding, stmts []sqlast.Statement) 
 		return
 	}
 	plan.Phase1 = append(plan.Phase1,
-		fmt.Sprintf("DROP INDEX CONCURRENTLY IF EXISTS %s;", stmt.Name),
+		fmt.Sprintf("DROP INDEX CONCURRENTLY IF EXISTS %s;", quoteIdent(stmt.Name)),
 	)
 }
 
@@ -116,14 +123,14 @@ func applyLock004(plan *RewritePlan, f locks.Finding, stmts []sqlast.Statement) 
 			continue
 		}
 		plan.Phase1 = append(plan.Phase1,
-			fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s;", stmt.Table, a.Column, a.DataType),
+			fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s;", quoteIdent(stmt.Table), quoteIdent(a.Column), a.DataType),
 		)
 		plan.Phase2 = append(plan.Phase2,
-			fmt.Sprintf("UPDATE %s SET %s = %s WHERE %s IS NULL;", stmt.Table, a.Column, a.DefaultExpr, a.Column),
+			fmt.Sprintf("UPDATE %s SET %s = %s WHERE %s IS NULL;", quoteIdent(stmt.Table), quoteIdent(a.Column), a.DefaultExpr, quoteIdent(a.Column)),
 		)
 		plan.Phase3 = append(plan.Phase3,
 			fmt.Sprintf("SET lock_timeout = '2s';"),
-			fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s;", stmt.Table, a.Column, a.DefaultExpr),
+			fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s;", quoteIdent(stmt.Table), quoteIdent(a.Column), a.DefaultExpr),
 		)
 	}
 }
@@ -140,18 +147,18 @@ func applyLock005(plan *RewritePlan, f locks.Finding, stmts []sqlast.Statement) 
 		}
 		constraintName := fmt.Sprintf("chk_%s_%s_not_null", stmt.Table, a.Column)
 		plan.Phase1 = append(plan.Phase1,
-			fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s IS NOT NULL) NOT VALID;", stmt.Table, constraintName, a.Column),
+			fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s IS NOT NULL) NOT VALID;", quoteIdent(stmt.Table), constraintName, quoteIdent(a.Column)),
 		)
 		plan.Phase2 = append(plan.Phase2,
-			fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT %s;", stmt.Table, constraintName),
+			fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT %s;", quoteIdent(stmt.Table), constraintName),
 		)
 		plan.Phase3 = append(plan.Phase3,
 			fmt.Sprintf("SET lock_timeout = '2s';"),
 			// VALIDATE CONSTRAINT is included here so Phase 3 is self-contained and safe.
 			// VALIDATE CONSTRAINT uses SHARE UPDATE EXCLUSIVE (not ACCESS EXCLUSIVE), so it is safe to repeat.
-			fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT %s;", stmt.Table, constraintName),
-			fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", stmt.Table, a.Column),
-			fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", stmt.Table, constraintName),
+			fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT %s;", quoteIdent(stmt.Table), constraintName),
+			fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", quoteIdent(stmt.Table), quoteIdent(a.Column)),
+			fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", quoteIdent(stmt.Table), constraintName),
 		)
 	}
 }
@@ -169,11 +176,11 @@ func applyLock006(plan *RewritePlan, f locks.Finding, stmts []sqlast.Statement) 
 		if a.ConstraintType != "CHECK" && a.ConstraintType != "FOREIGN KEY" {
 			continue
 		}
-		notValidSQL := buildConstraintSQL(stmt.Table, a) + " NOT VALID;"
+		notValidSQL := buildConstraintSQL(quoteIdent(stmt.Table), a) + " NOT VALID;"
 		plan.Phase1 = append(plan.Phase1, notValidSQL)
 		if a.ConstraintName != "" {
 			plan.Phase2 = append(plan.Phase2,
-				fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT %s;", stmt.Table, a.ConstraintName),
+				fmt.Sprintf("ALTER TABLE %s VALIDATE CONSTRAINT %s;", quoteIdent(stmt.Table), a.ConstraintName),
 			)
 		}
 	}
@@ -192,17 +199,17 @@ func applyLock007(plan *RewritePlan, f locks.Finding, stmts []sqlast.Statement) 
 		case *sqlast.DropColumnAction:
 			plan.Phase3 = append(plan.Phase3,
 				fmt.Sprintf("SET lock_timeout = '2s';"),
-				fmt.Sprintf("ALTER TABLE %s DROP COLUMN IF EXISTS %s;", stmt.Table, a.Column),
+				fmt.Sprintf("ALTER TABLE %s DROP COLUMN IF EXISTS %s;", quoteIdent(stmt.Table), quoteIdent(a.Column)),
 			)
 		case *sqlast.RenameColumnAction:
 			plan.Phase3 = append(plan.Phase3,
 				fmt.Sprintf("SET lock_timeout = '2s';"),
-				fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", stmt.Table, a.OldName, a.NewName),
+				fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;", quoteIdent(stmt.Table), quoteIdent(a.OldName), quoteIdent(a.NewName)),
 			)
 		case *sqlast.RenameTableAction:
 			plan.Phase3 = append(plan.Phase3,
 				fmt.Sprintf("SET lock_timeout = '2s';"),
-				fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", stmt.Table, a.NewName),
+				fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", quoteIdent(stmt.Table), quoteIdent(a.NewName)),
 			)
 		}
 	}
@@ -223,7 +230,11 @@ func buildConstraintSQL(table string, a *sqlast.AddConstraintAction) string {
 	case "CHECK":
 		return fmt.Sprintf("ALTER TABLE %s ADD %sCHECK (%s)", table, nameClause, a.Expression)
 	case "FOREIGN KEY":
-		return fmt.Sprintf("ALTER TABLE %s ADD %sFOREIGN KEY ...", table, nameClause)
+		fkBody := a.FKDefinition
+		if fkBody == "" {
+			fkBody = "(id) REFERENCES other(id)"
+		}
+		return fmt.Sprintf("ALTER TABLE %s ADD %sFOREIGN KEY %s", table, nameClause, fkBody)
 	}
 	return ""
 }
@@ -233,6 +244,5 @@ func RewriteSQL(sql string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	_ = json.Marshal
 	return plan.Marshal()
 }

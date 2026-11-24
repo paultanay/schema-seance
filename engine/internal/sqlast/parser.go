@@ -140,9 +140,12 @@ var volatileFunctions = map[string]bool{
 }
 
 func isVolatileDefault(expr string) bool {
-	lower := strings.ToLower(strings.TrimSpace(expr))
+	// consumeUntil joins tokens with spaces: "gen_random_uuid ( )".
+	// Compact whitespace so real calls match fn+"(" while string literals
+	// like "a random note" (no parens) do not.
+	compact := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(expr)), " ", "")
 	for fn := range volatileFunctions {
-		if strings.Contains(lower, fn) {
+		if strings.Contains(compact, fn+"(") {
 			return true
 		}
 	}
@@ -178,7 +181,7 @@ func (p *Parser) parseDataType() string {
 			if p.peek().Type == TIME {
 				zone := p.advance()
 				parts = append(parts, zone.Literal)
-				if p.peek().Type == ZONE {
+				if p.peek().Type == IDENT && strings.EqualFold(p.peek().Literal, "zone") {
 					p.advance()
 					parts = append(parts, "zone")
 				}
@@ -348,7 +351,7 @@ func (p *Parser) parseConstraintDef(name string) AlterAction {
 			p.advance()
 		}
 		action.ConstraintType = "FOREIGN KEY"
-		p.consumeUntil(NOT, SEMICOLON, COMMA)
+		action.FKDefinition = p.consumeUntil(NOT, SEMICOLON, COMMA)
 	case PRIMARY:
 		p.advance()
 		if p.peek().Type == KEY {
@@ -536,10 +539,17 @@ func (p *Parser) parseStatement() Statement {
 				p.advance()
 			}
 			tableT := p.advance()
+			columns := ""
+			if p.peek().Type == LPAREN {
+				p.advance()
+				columns = p.consumeUntil(RPAREN)
+				p.advance()
+			}
 			p.skipUntilSemicolon()
 			return &CreateIndexStmt{
 				Name:       indexName,
 				Table:      tableT.Literal,
+				Columns:    columns,
 				Concurrent: concurrent,
 				Unique:     unique,
 				Line:       line,
@@ -637,5 +647,3 @@ func (p *Parser) parseStatement() Statement {
 	}
 }
 
-// ZONE keyword for timestamp with time zone
-const ZONE TokenType = 999

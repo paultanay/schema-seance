@@ -210,6 +210,7 @@ type AddConstraintAction struct {
 	ConstraintName string
 	ConstraintType string // CHECK, FOREIGN KEY, UNIQUE, PRIMARY KEY
 	Expression     string
+	FKDefinition   string
 	NotValid       bool
 }
 
@@ -243,6 +244,7 @@ func (a *RenameTableAction) alterActionNode() {}
 type CreateIndexStmt struct {
 	Name        string
 	Table       string
+	Columns     string
 	Concurrent  bool
 	Unique      bool
 	Line        int

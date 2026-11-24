@@ -83,7 +83,7 @@ export default function App() {
     setState(s => ({ ...s, isRunning: true, runResult: null, rewriteResult: null, error: null }))
     try {
       const preset = PRESETS[state.activePreset]
-      const result = await runProof(preset, state.migrationSql)
+      const result = await runProof(preset, state.migrationSql, state.findings)
       setState(s => ({ ...s, runResult: result, isRunning: false }))
     } catch (e) {
       setState(s => ({ ...s, isRunning: false, error: e instanceof Error ? e.message : String(e) }))

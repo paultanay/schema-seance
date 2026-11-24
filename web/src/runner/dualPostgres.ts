@@ -9,7 +9,7 @@ import {
   type SeedRow,
 } from './chaosGenerator'
 import type { Preset } from '../presets/outages'
-import type { RewritePlan } from '../wasm/bridge'
+import type { RewritePlan, Finding } from '../wasm/bridge'
 
 export interface V1QueryResult {
   sql: string
@@ -40,6 +40,31 @@ export interface RewriteRunResult extends RunResult {
 }
 
 const SEED_COUNT = 200
+
+const LOCK_PRIORITY: Record<string, number> = {
+  'ACCESS EXCLUSIVE': 8,
+  'EXCLUSIVE': 7,
+  'SHARE ROW EXCLUSIVE': 6,
+  'SHARE': 5,
+  'SHARE UPDATE EXCLUSIVE': 4,
+  'ROW EXCLUSIVE': 3,
+  'ROW SHARE': 2,
+  'ACCESS SHARE': 1,
+}
+
+function deriveLockMode(findings: Finding[]): string {
+  if (findings.length === 0) return 'NONE'
+  let best = ''
+  let bestRank = 0
+  for (const f of findings) {
+    const rank = LOCK_PRIORITY[f.lockMode] ?? 0
+    if (rank > bestRank) {
+      bestRank = rank
+      best = f.lockMode
+    }
+  }
+  return best || 'ACCESS EXCLUSIVE'
+}
 
 function getRowGenerator(tableName: string): (count: number, seed: number) => SeedRow[] {
   switch (tableName) {
@@ -87,7 +112,7 @@ async function runAppQueries(db: PGlite, queries: string[]): Promise<Array<{ sql
   return results
 }
 
-export async function runProof(preset: Preset, migrationSql: string): Promise<RunResult> {
+export async function runProof(preset: Preset, migrationSql: string, findings: Finding[] = []): Promise<RunResult> {
   const baselineDb = new PGlite()
   const candidateDb = new PGlite()
 
@@ -143,9 +168,9 @@ export async function runProof(preset: Preset, migrationSql: string): Promise<Ru
     }
 
     return {
-      lockMode: 'ACCESS EXCLUSIVE',
-      blocksReads: true,
-      blocksWrites: true,
+      lockMode: deriveLockMode(findings),
+      blocksReads: findings.some(f => f.blocksReads),
+      blocksWrites: findings.some(f => f.blocksWrites),
       v1Results,
       v1Passing,
       v1Total: preset.appQueries.length,

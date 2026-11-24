@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "schemaseance": {
+      "command": "node",
+      "args": ["mcp/dist/index.js"],
+      "env": {
+        "SCHEMASEANCE_ENGINE": "./engine/cmd/cli/schemaseance"
+      },
+      "disabled": false
+    }
+  }
+}

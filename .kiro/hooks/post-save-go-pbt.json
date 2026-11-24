@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Go PBT and WASM Rebuild",
+      "trigger": "PostFileSave",
+      "matcher": "engine/.*\\.go$",
+      "action": {
+        "type": "command",
+        "command": "cd engine && go test ./... && echo 'Go tests passed' && cd .. && ./scripts/build-wasm.sh && echo 'WASM build complete'"
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Migration Safety Gate",
+      "trigger": "Stop",
+      "action": {
+        "type": "command",
+        "command": "./scripts/verify-submission.sh --gate"
+      }
+    }
+  ]
+}

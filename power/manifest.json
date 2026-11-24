@@ -1,0 +1,14 @@
+{
+  "name": "schemaseance",
+  "version": "0.1.0",
+  "description": "SchemaSeance: PostgreSQL 16 migration lock-hazard analyzer and Expand-and-Contract rewriter. Detects ACCESS EXCLUSIVE locks, table rewrites, and v1 app compatibility breaks before they reach production.",
+  "keywords": ["postgresql", "migrations", "database", "safety", "locks"],
+  "mcp": {
+    "command": "node",
+    "args": ["${POWER_DIR}/mcp/dist/index.js"],
+    "env": {
+      "SCHEMASEANCE_ENGINE": "${POWER_DIR}/engine-bin/schemaseance"
+    }
+  },
+  "steering": ["postgres-locks.md"]
+}

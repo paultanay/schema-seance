@@ -7,6 +7,10 @@
         "SCHEMASEANCE_ENGINE": "./engine/cmd/cli/schemaseance"
       },
       "disabled": false
+    },
+    "vercel": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://mcp.vercel.com"]
     }
   }
 }

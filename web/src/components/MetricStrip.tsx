@@ -46,7 +46,7 @@ export default function MetricStrip({ result }: MetricStripProps) {
       <Metric
         label="HIGHEST LOCK MODE"
         value={result.lockMode}
-        status={result.lockMode === 'ACCESS EXCLUSIVE' ? 'unsafe' : 'warn'}
+        status={result.lockMode === 'ACCESS EXCLUSIVE' ? 'unsafe' : result.lockMode === 'NONE' ? 'safe' : 'warn'}
       />
       <Metric
         label="V1 APP COMPATIBILITY"

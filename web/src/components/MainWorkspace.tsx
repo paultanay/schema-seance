@@ -45,6 +45,7 @@ export default function MainWorkspace(props: MainWorkspaceProps) {
         isProving={props.isProving}
         onProveSafeRewrite={props.onProveSafeRewrite}
         error={props.error}
+        findings={props.findings}
       />
     </div>
   )

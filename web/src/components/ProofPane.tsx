@@ -3,7 +3,7 @@ import HazardList from './HazardList'
 import CounterexampleView from './CounterexampleView'
 import ExpandContractPanel from './ExpandContractPanel'
 import type { RunResult, RewriteRunResult } from '../runner/dualPostgres'
-import type { RewritePlan } from '../wasm/bridge'
+import type { RewritePlan, Finding } from '../wasm/bridge'
 
 interface ProofPaneProps {
   runResult: RunResult | null
@@ -13,6 +13,7 @@ interface ProofPaneProps {
   isProving: boolean
   onProveSafeRewrite: () => void
   error: string | null
+  findings: Finding[]
 }
 
 export default function ProofPane({
@@ -23,7 +24,9 @@ export default function ProofPane({
   isProving,
   onProveSafeRewrite,
   error,
+  findings,
 }: ProofPaneProps) {
+  const hasCritical = findings.some(f => f.severity === 'CRITICAL')
   return (
     <div style={{
       flex: 1,
@@ -47,11 +50,11 @@ export default function ProofPane({
           <span style={{
             fontSize: '11px',
             fontFamily: 'var(--font-mono)',
-            color: runResult.migrationError || runResult.v1Passing < runResult.v1Total || !runResult.checksumMatch
+            color: hasCritical || runResult.migrationError || runResult.v1Passing < runResult.v1Total || !runResult.checksumMatch
               ? 'var(--crimson)'
               : 'var(--forest)',
           }}>
-            {runResult.migrationError || runResult.v1Passing < runResult.v1Total || !runResult.checksumMatch
+            {hasCritical || runResult.migrationError || runResult.v1Passing < runResult.v1Total || !runResult.checksumMatch
               ? 'UNSAFE'
               : 'SAFE'}
           </span>

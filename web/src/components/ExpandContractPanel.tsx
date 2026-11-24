@@ -47,9 +47,10 @@ export default function ExpandContractPanel({
   if (!showPanel) return null
 
   const isSafe = rewriteResult !== null &&
+    rewriteResult.migrationError === null &&
     rewriteResult.v1Passing === rewriteResult.v1Total &&
-    rewriteResult.checksumMatch &&
-    rewriteResult.migrationError === null
+    rewriteResult.rowsPreserved === rewriteResult.rowsTotal &&
+    rewriteResult.truncationCounterexamples.length === 0
 
   return (
     <div style={{
@@ -151,7 +152,7 @@ export default function ExpandContractPanel({
                 rows: {rewriteResult.rowsPreserved}/{rewriteResult.rowsTotal}
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
-                checksum: {rewriteResult.checksumMatch ? 'match' : 'mismatch'}
+                truncations: {rewriteResult.truncationCounterexamples.length}
               </span>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
                 {rewriteResult.executionTimeMs}ms

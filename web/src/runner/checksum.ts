@@ -4,8 +4,10 @@ interface Row {
   [key: string]: unknown
 }
 
+const VOLATILE_COLUMNS = new Set(['created_at', 'updated_at'])
+
 function canonicalizeRow(row: Row): string {
-  const keys = Object.keys(row).sort()
+  const keys = Object.keys(row).filter(k => !VOLATILE_COLUMNS.has(k)).sort()
   return keys.map(k => `${k}=${JSON.stringify(row[k])}`).join('|')
 }
 

@@ -1,7 +1,6 @@
 package locks
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
@@ -47,11 +46,4 @@ func newFinding(ruleCode string, severity Severity, lockMode string, blocksReads
 		Explanation:    explanation,
 		SafePattern:    safePattern,
 	}
-}
-
-func MarshalFindings(findings []Finding) ([]byte, error) {
-	if findings == nil {
-		findings = []Finding{}
-	}
-	return json.Marshal(findings)
 }
